@@ -1,18 +1,56 @@
 # Quick Commands After SSH
 
-## Option 1: Automated Setup (Recommended)
+## ?? CRITICAL: T4 CANNOT RUN FP8 MODELS!
 
-Just run this one command - it does everything:
+**Your Tesla T4 has compute capability 7.5, but FP8 requires 8.0+**
 
-```bash
-curl -sSL https://raw.githubusercontent.com/allenai/olmocr/main/SETUP_T4.sh | bash
-```
-
-*Note: If the script isn't in the repo yet, copy the commands below manually*
+? Local inference with default model = **WON'T WORK**
+? Cloud inference = **WORKS PERFECTLY** (and is cheaper!)
 
 ---
 
-## Option 2: Manual Setup (Step by Step)
+## Option 1: Cloud Inference (RECOMMENDED - Works immediately!)
+
+### Quick Setup:
+```bash
+# Install olmocr (no GPU packages needed!)
+conda create -n olmocr python=3.11 -y
+conda activate olmocr
+pip install olmocr
+
+# Download sample
+mkdir -p ~/test && cd ~/test
+curl -o sample.pdf https://olmocr.allenai.org/papers/olmocr_3pg_sample.pdf
+```
+
+### Choose a Provider and Get API Key:
+
+**DeepInfra (Easiest - Sign up with Google/GitHub):**
+1. Go to https://deepinfra.com/
+2. Sign up ? Get API key
+3. Run:
+```bash
+python -m olmocr.pipeline ./workspace --markdown \
+  --server https://api.deepinfra.com/v1/openai \
+  --api_key YOUR_API_KEY \
+  --model allenai/olmOCR-2-7B-1025 \
+  --pdfs sample.pdf
+```
+
+**Cirrascale (Cheapest - $0.07/M tokens):**
+```bash
+python -m olmocr.pipeline ./workspace --markdown \
+  --server https://ai2endpoints.cirrascale.ai/api \
+  --api_key YOUR_API_KEY \
+  --model olmOCR-2-7B-1025 \
+  --pdfs sample.pdf
+```
+
+**Cost**: ~$0.0003/page. 1000 pages = $0.30. Way cheaper than your VM!
+
+---
+
+## Option 2: Manual Setup to Understand the Issue (Will fail, but educational)
 
 ### 1. Check Your GPU
 ```bash
@@ -54,14 +92,16 @@ mkdir -p ~/olmocr_test && cd ~/olmocr_test
 curl -o sample.pdf https://olmocr.allenai.org/papers/olmocr_3pg_sample.pdf
 ```
 
-### 6. Run First Test (T4-Optimized)
+### 6. Try to Run (This will FAIL with FP8 error)
 ```bash
 python -m olmocr.pipeline ./workspace_test --markdown --pdfs sample.pdf \
   --gpu-memory-utilization 0.70 \
   --max_model_len 10240
 ```
 
-**First run will take 5-10 minutes** (downloading ~15GB model). Subsequent runs are fast.
+**This will fail with**: `RuntimeError: Quantization scheme is not supported for the current GPU. Min capability: 80. Current capability: 75.`
+
+This is expected! The T4 cannot run FP8 models. Use cloud inference instead (Option 1 above).
 
 ### 7. View Results
 ```bash
